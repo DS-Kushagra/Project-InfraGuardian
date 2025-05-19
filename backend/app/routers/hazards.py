@@ -17,7 +17,8 @@ async def create_hazard(hazard: schemas.HazardCreate, db: Session = Depends(get_
 def get_hazards(
     db: Session = Depends(get_db),
     min_severity: int = Query(1, ge=1, le=5),
-    max_severity: int = Query(5, ge=1, le=5)
+    max_severity: int = Query(default=5, ge=1, le=5)
+
 ):
     hazards = db.query(models.Hazard).filter(
         models.Hazard.severity >= min_severity,

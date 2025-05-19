@@ -5,35 +5,37 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.heat";
 import L from "leaflet";
 
+// 🔹 Dynamic Marker Color based on Status
+const getMarkerIcon = (status) => {
+  const colors = {
+    reported: "red",
+    in_progress: "orange",
+    resolved: "green",
+  };
+
+  const color = colors[status] || "gray";
+
+  return L.divIcon({
+    className: "custom-icon",
+    html: `<div style="background-color: ${color}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white;"></div>`,
+  });
+};
+
 function Heatmap({ points, show }) {
   const map = useMap();
   const heatLayerRef = useRef(null);
 
   useEffect(() => {
     if (!map || !show || points.length === 0) {
-      console.log(
-        "Skipping heatmap render: map?",
-        !!map,
-        "show?",
-        show,
-        "points:",
-        points.length
-      );
       return;
     }
 
-    // Delay to ensure map layout is stable
     const timeout = setTimeout(() => {
-      if (!map.getSize || map.getSize().y === 0) {
-        console.log("Map not fully rendered yet");
-        return;
-      }
+      if (!map.getSize || map.getSize().y === 0) return;
 
       if (heatLayerRef.current) {
         map.removeLayer(heatLayerRef.current);
       }
-
-      console.log("Rendering heatmap with", points.length, "points");
 
       const heat = L.heatLayer(points, {
         radius: 30,
@@ -63,31 +65,39 @@ export default function HazardMap() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [showHeatmap, setShowHeatmap] = useState(true);
 
-  useEffect(() => {
-    const fetchHazards = () => {
-      axios
-        .get(`http://127.0.0.1:8000/hazards/?min_severity=${minSeverity}`)
-        .then((res) => {
-          setHazards(res.data);
-          setLastUpdated(new Date());
-          console.log("Fetched hazards:", res.data.length);
-        })
-        .catch((err) => console.error("API fetch error", err));
-    };
+  // 🔄 Fetch Hazards
+  const fetchHazards = () => {
+    axios.get(`http://127.0.0.1:8000/hazards/?min_severity=${minSeverity}&max_severity=5`)
+      .then((res) => {
+        setHazards(res.data);
+        setLastUpdated(new Date());
+      })
+      .catch((err) => console.error("API fetch error", err));
+  };
 
+  useEffect(() => {
     fetchHazards();
     const interval = setInterval(fetchHazards, 5000);
     return () => clearInterval(interval);
   }, [minSeverity]);
 
-  // Map severity to normalized heat value (0–1)
+  // 🔁 Update status
+  const updateStatus = async (id, newStatus) => {
+    try {
+      await axios.patch(
+        `http://127.0.0.1:8000/hazards/${id}?status=${newStatus}`
+      );
+      fetchHazards();
+    } catch (err) {
+      console.error("Status update failed:", err);
+    }
+  };
+
   const heatPoints = hazards.map((h) => [
     h.latitude,
     h.longitude,
-    Math.max(h.severity / 5, 0.3), // prevent very low intensity from being invisible
+    Math.max(h.severity / 5, 0.3),
   ]);
-
-  console.log("Heat points:", heatPoints);
 
   return (
     <div className="flex h-screen">
@@ -95,7 +105,6 @@ export default function HazardMap() {
       <div className="w-64 bg-white p-4 shadow-md z-10">
         <h2 className="text-lg font-semibold mb-2">Filters</h2>
 
-        {/* Severity Filter */}
         <label className="block mb-4">
           Severity Filter:
           <select
@@ -111,7 +120,6 @@ export default function HazardMap() {
           </select>
         </label>
 
-        {/* Toggle Heatmap */}
         <label className="block mb-4">
           <input
             type="checkbox"
@@ -140,18 +148,36 @@ export default function HazardMap() {
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-        {/* Heatmap Layer */}
         <Heatmap points={heatPoints} show={showHeatmap} />
 
-        {/* Markers */}
+        {/* Hazard Markers */}
         {hazards.map((h) => (
-          <Marker key={h.id} position={[h.latitude, h.longitude]}>
+          <Marker
+            key={h.id}
+            position={[h.latitude, h.longitude]}
+            icon={getMarkerIcon(h.status)}
+          >
             <Popup>
               <strong>{h.type}</strong>
               <br />
               Severity: {h.severity}
               <br />
+              Status: {h.status.replace("_", " ")}
+              <br />
               {new Date(h.timestamp).toLocaleString()}
+              <br />
+              <label className="block mt-2">
+                Update Status:
+                <select
+                  value={h.status}
+                  onChange={(e) => updateStatus(h.id, e.target.value)}
+                  className="w-full mt-1 border p-1 rounded"
+                >
+                  <option value="reported">Reported</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                </select>
+              </label>
             </Popup>
           </Marker>
         ))}

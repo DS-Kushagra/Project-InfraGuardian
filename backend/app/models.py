@@ -7,9 +7,9 @@ import enum
 Base = declarative_base()
 
 class HazardStatus(str, enum.Enum):
-    reported = "Reported"
-    in_progress = "In Progress"
-    resolved = "Resolved"
+    reported = "reported"
+    in_progress = "in_progress"
+    resolved = "resolved"
 
 class Hazard(Base):
     __tablename__ = "hazards"
@@ -20,4 +20,4 @@ class Hazard(Base):
     type = Column(String, nullable=False)
     severity = Column(Integer, nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
-    status = Column(Enum(HazardStatus), default=HazardStatus.reported)
+    status = Column(Enum(HazardStatus), default=HazardStatus.reported, nullable=False)

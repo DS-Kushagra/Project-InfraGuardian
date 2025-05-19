@@ -1,11 +1,12 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum
+from typing import Optional
 
 class HazardStatus(str, Enum):
-    reported = "Reported"
-    in_progress = "In Progress"
-    resolved = "Resolved"
+    reported = "reported"
+    in_progress = "in_progress"
+    resolved = "resolved"
 
 class HazardBase(BaseModel):
     latitude: float
@@ -14,8 +15,13 @@ class HazardBase(BaseModel):
     severity: int
     status: HazardStatus = HazardStatus.reported  # NEW FIELD
 
-class HazardCreate(HazardBase):
-    pass
+class HazardCreate(BaseModel):
+    latitude: float
+    longitude: float
+    type: str
+    severity: int
+    status: Optional[HazardStatus] = HazardStatus.reported
+
 
 class Hazard(HazardBase):
     id: int
