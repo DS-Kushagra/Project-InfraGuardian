@@ -1,0 +1,6 @@
+# mobile/inference/datasets/data.yaml
+train:  D:\InfraGuardian\datasets\potholes-detection-yolov8/images/train
+val:    D:\InfraGuardian\datasets\potholes-detection-yolov8/images/valid
+
+nc: 1
+names: ['pothole']
