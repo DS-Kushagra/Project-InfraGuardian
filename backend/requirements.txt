@@ -9,3 +9,4 @@ opencv-python-headless
 ultralytics 
 labelImg
 requests
+python-multipart

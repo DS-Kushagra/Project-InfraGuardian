@@ -13,9 +13,9 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,        # ← must include your Vite dev server
+    allow_origins=["*"],  # OR replace with ["http://your-mobile-ip"]
     allow_credentials=True,
-    allow_methods=["*"],          # or list ["GET","POST",…]
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 

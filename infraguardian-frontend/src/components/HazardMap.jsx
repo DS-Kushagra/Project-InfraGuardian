@@ -26,9 +26,7 @@ function Heatmap({ points, show }) {
   const heatLayerRef = useRef(null);
 
   useEffect(() => {
-    if (!map || !show || points.length === 0) {
-      return;
-    }
+    if (!map || !show || points.length === 0) return;
 
     const timeout = setTimeout(() => {
       if (!map.getSize || map.getSize().y === 0) return;
@@ -65,9 +63,19 @@ export default function HazardMap() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [showHeatmap, setShowHeatmap] = useState(true);
 
+  // ✅ New status filters
+  const [statusFilters, setStatusFilters] = useState({
+    reported: true,
+    in_progress: true,
+    resolved: true,
+  });
+
   // 🔄 Fetch Hazards
   const fetchHazards = () => {
-    axios.get(`http://127.0.0.1:8000/hazards/?min_severity=${minSeverity}&max_severity=5`)
+    axios
+      .get(
+        `http://127.0.0.1:8000/hazards/?min_severity=${minSeverity}&max_severity=5`
+      )
       .then((res) => {
         setHazards(res.data);
         setLastUpdated(new Date());
@@ -93,11 +101,33 @@ export default function HazardMap() {
     }
   };
 
-  const heatPoints = hazards.map((h) => [
+  // ✅ Apply status filter
+  const visibleHazards = hazards.filter((h) => statusFilters[h.status]);
+
+  // ✅ Heatmap points
+  const heatPoints = visibleHazards.map((h) => [
     h.latitude,
     h.longitude,
     Math.max(h.severity / 5, 0.3),
   ]);
+
+  // ✅ Summary stats
+  const statusCounts = {
+    reported: 0,
+    in_progress: 0,
+    resolved: 0,
+  };
+
+  let severitySum = 0;
+
+  visibleHazards.forEach((h) => {
+    statusCounts[h.status] += 1;
+    severitySum += h.severity;
+  });
+
+  const avgSeverity = visibleHazards.length
+    ? (severitySum / visibleHazards.length).toFixed(1)
+    : "-";
 
   return (
     <div className="flex h-screen">
@@ -120,7 +150,42 @@ export default function HazardMap() {
           </select>
         </label>
 
-        <label className="block mb-4">
+        {/* ✅ Status Checkboxes */}
+        <div className="mb-4">
+          <h3 className="font-semibold mb-1">Status Filter</h3>
+          {["reported", "in_progress", "resolved"].map((status) => (
+            <label key={status} className="block text-sm">
+              <input
+                type="checkbox"
+                checked={statusFilters[status]}
+                onChange={() =>
+                  setStatusFilters((prev) => ({
+                    ...prev,
+                    [status]: !prev[status],
+                  }))
+                }
+                className="mr-2"
+              />
+              {status
+                .replace("_", " ")
+                .replace(/\b\w/g, (l) => l.toUpperCase())}
+            </label>
+          ))}
+        </div>
+
+        {/* ✅ Stats block */}
+        <div className="mt-4">
+          <h3 className="font-semibold mb-2">Hazard Summary</h3>
+          <ul className="text-sm space-y-1">
+            <li>Total Hazards: {visibleHazards.length}</li>
+            <li>Reported: {statusCounts.reported}</li>
+            <li>In Progress: {statusCounts.in_progress}</li>
+            <li>Resolved: {statusCounts.resolved}</li>
+            <li>Avg Severity: {avgSeverity}</li>
+          </ul>
+        </div>
+
+        <label className="block mb-4 mt-4">
           <input
             type="checkbox"
             checked={showHeatmap}
@@ -129,8 +194,6 @@ export default function HazardMap() {
           />
           Show Heatmap
         </label>
-
-        <p>Total hazards shown: {hazards.length}</p>
 
         {lastUpdated && (
           <p className="text-xs text-gray-500 mt-4">
@@ -150,8 +213,8 @@ export default function HazardMap() {
 
         <Heatmap points={heatPoints} show={showHeatmap} />
 
-        {/* Hazard Markers */}
-        {hazards.map((h) => (
+        {/* ✅ Filtered Hazard Markers */}
+        {visibleHazards.map((h) => (
           <Marker
             key={h.id}
             position={[h.latitude, h.longitude]}
