@@ -130,6 +130,7 @@ celerybeat.pid
 # Environments
 .Artifacts/
 .env
+backend/alembic.ini
 .venv
 env/
 venv/
