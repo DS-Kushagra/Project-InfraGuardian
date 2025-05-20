@@ -4,14 +4,33 @@ from typing import List
 
 from app import crud, schemas, models
 from app.database import get_db
+from fastapi import File, Form, UploadFile
 
 router = APIRouter()
 
 
-@router.post("/", response_model=schemas.Hazard)
-async def create_hazard(hazard: schemas.HazardCreate, db: Session = Depends(get_db)):
-    return crud.create_hazard(db, hazard)
+@router.post("/", response_model=schemas.HazardOut)
+async def create_hazard(
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    type: str = Form(...),
+    severity: int = Form(...),
+    image: UploadFile = File(None),  # Optional image
+    db: Session = Depends(get_db)
+):
+    # You can optionally save/process the image here
+    # filename = image.filename if image else None
 
+    new_hazard = models.Hazard(
+        latitude=latitude,
+        longitude=longitude,
+        type=type,
+        severity=severity,
+    )
+    db.add(new_hazard)
+    db.commit()
+    db.refresh(new_hazard)
+    return new_hazard
 
 @router.get("/", response_model=List[schemas.Hazard])
 def get_hazards(
